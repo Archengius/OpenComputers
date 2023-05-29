@@ -10,6 +10,7 @@ import appeng.api.storage.data.IAEItemStack
 import appeng.me.helpers.IGridProxyable
 import appeng.util.item.AEItemStack
 import com.google.common.collect.ImmutableSet
+import cpw.mods.fml.common.registry.GameRegistry
 import li.cil.oc.OpenComputers
 import li.cil.oc.api.machine.Arguments
 import li.cil.oc.api.machine.Callback
@@ -114,6 +115,21 @@ trait NetworkControl[AETile >: Null <: TileEntity with IGridProxyable with IActi
       .map(convert)
       .filter(hash => matches(hash, filter))
       .toArray)
+  }
+
+  @Callback(doc = "function(filter:table):table -- Get a list of the stored items in the network matching the filter. Filter is an Array of Item IDs")
+  def getItemsInNetworkFast(context: Context, args: Arguments): Array[AnyRef] = {
+    val table = args.checkTable(0)
+
+    val itemFilterSet = mutable.LinkedHashSet.empty[Item]
+    for (i <- 0 until table.size()) {
+      table.get(i + 1) match {
+        case itemNumberId: Number => itemFilterSet += Item.itemRegistry.getObjectById(itemNumberId.intValue()).asInstanceOf[Item]
+        case itemStringId: String => itemFilterSet += Item.itemRegistry.getObject(itemStringId).asInstanceOf[Item]
+        other: Any => throw new IllegalArgumentException("invalid argument in filter table at index " + (i + 1) + ": " + other.toString)
+      }
+    }
+    result(allItems.filter(item => itemFilterSet.contains(item.getItem)).map(convert).toArray)
   }
 
   @Callback(doc = "function(filter:table, dbAddress:string[, startSlot:number[, count:number]]): Boolean -- Store items in the network matching the specified filter in the database with the specified address.")
